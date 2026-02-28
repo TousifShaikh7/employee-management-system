@@ -353,6 +353,7 @@ export interface PerformanceReview {
     // Joined
     employee?: Pick<Profile, 'id' | 'full_name' | 'profile_photo_url' | 'job_title'>
     reviewer?: Pick<Profile, 'id' | 'full_name'>
+    cycle?: Pick<ReviewCycle, 'id' | 'name' | 'type'>
 }
 
 export interface SalaryComponentRecord {

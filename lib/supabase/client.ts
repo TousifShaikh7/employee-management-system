@@ -16,12 +16,12 @@ export function createBrowserSupabaseClient() {
                 persistSession: true,
                 autoRefreshToken: true,
                 // Use lock with steal to prevent orphaned locks from hanging
-                lock: (name: string, acquireTimeout: number, fn: () => Promise<unknown>) => {
+                lock: async <R>(name: string, acquireTimeout: number, fn: () => Promise<R>): Promise<R> => {
                     if (typeof navigator === 'undefined' || !navigator.locks) {
                         // Fallback: no lock API available
                         return fn()
                     }
-                    return navigator.locks.request(
+                    return await navigator.locks.request(
                         name,
                         { mode: 'exclusive', ifAvailable: true },
                         async (lock) => {
@@ -29,7 +29,7 @@ export function createBrowserSupabaseClient() {
                                 return await fn()
                             } else {
                                 // Lock not available, try with steal after timeout
-                                return await new Promise((resolve, reject) => {
+                                return await new Promise<R>((resolve, reject) => {
                                     const timeout = setTimeout(() => {
                                         fn().then(resolve).catch(reject)
                                     }, Math.min(acquireTimeout, 1000))
@@ -38,8 +38,12 @@ export function createBrowserSupabaseClient() {
                                         { mode: 'exclusive' },
                                         async () => {
                                             clearTimeout(timeout)
-                                            const result = await fn()
-                                            resolve(result)
+                                            try {
+                                                const result = await fn()
+                                                resolve(result)
+                                            } catch (err) {
+                                                reject(err)
+                                            }
                                         }
                                     ).catch((err) => {
                                         clearTimeout(timeout)
@@ -49,7 +53,7 @@ export function createBrowserSupabaseClient() {
                             }
                         }
                     )
-                },
+                }
             },
         }
     )
