@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Wallet, DollarSign, FileText } from 'lucide-react'
+import { Wallet, DollarSign, FileText, Play } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Payslip, PayrollRun, SalaryComponentRecord } from '@/lib/types/database'
 
 const statusStyles: Record<string, string> = {
@@ -28,6 +30,7 @@ export default function PayrollPage() {
     const [runs, setRuns] = useState<PayrollRun[]>([])
     const [salaryComponents, setSalaryComponents] = useState<SalaryComponentRecord[]>([])
     const [loading, setLoading] = useState(true)
+    const [runningPayroll, setRunningPayroll] = useState(false)
 
     const isAdmin = profile?.role === 'super_admin' || profile?.role === 'hr_admin'
 
@@ -48,15 +51,49 @@ export default function PayrollPage() {
 
     useEffect(() => { fetchData() }, [fetchData])
 
-    const formatCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+    const handleRunPayroll = async () => {
+        const month = prompt('Enter month to process (YYYY-MM):', new Date().toISOString().slice(0, 7))
+        if (!month) return
+        setRunningPayroll(true)
+        try {
+            const res = await fetch('/api/payroll/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ month }),
+            })
+            const json = await res.json()
+            if (json.success) {
+                toast.success(json.message || 'Payroll processed successfully!')
+                fetchData()
+            } else {
+                toast.error(json.message || 'Failed to process payroll')
+            }
+        } catch { toast.error('Failed to process payroll') }
+        finally { setRunningPayroll(false) }
+    }
+
+    const formatCurrency = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
 
     const tabs: Tab[] = isAdmin ? ['payslips', 'runs', 'salary'] : ['payslips']
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-xl font-bold text-black tracking-tight">Payroll</h1>
-                <p className="text-neutral-500 text-sm mt-0.5">Salary, payslips & compensation</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl font-bold text-black tracking-tight">Payroll</h1>
+                    <p className="text-neutral-500 text-sm mt-0.5">Salary, payslips & compensation</p>
+                </div>
+                {isAdmin && (
+                    <Button
+                        className="gap-2 bg-black hover:bg-neutral-800 text-white"
+                        size="sm"
+                        onClick={handleRunPayroll}
+                        disabled={runningPayroll}
+                    >
+                        <Play className="w-3.5 h-3.5" />
+                        {runningPayroll ? 'Processing...' : 'Run Payroll'}
+                    </Button>
+                )}
             </div>
 
             <div className="flex items-center gap-0 border-b border-neutral-200">

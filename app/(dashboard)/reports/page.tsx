@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Users, FolderKanban, Briefcase, Calendar, Clock, FileText } from 'lucide-react'
+import { Users, FolderKanban, Briefcase, Calendar, Clock, FileText, Download } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface OverviewData {
     totalEmployees: number
@@ -18,6 +20,7 @@ interface OverviewData {
 export default function ReportsPage() {
     const [data, setData] = useState<OverviewData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [exporting, setExporting] = useState<string | null>(null)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -31,6 +34,52 @@ export default function ReportsPage() {
     }, [])
 
     useEffect(() => { fetchData() }, [fetchData])
+
+    const exportCSV = async (type: string) => {
+        setExporting(type)
+        try {
+            let url = ''
+            let filename = ''
+            if (type === 'employees') {
+                url = '/api/employees?pageSize=999'
+                filename = 'employees_export.csv'
+            } else if (type === 'attendance') {
+                url = '/api/attendance'
+                filename = 'attendance_export.csv'
+            } else if (type === 'leave') {
+                url = '/api/leave'
+                filename = 'leave_requests_export.csv'
+            }
+
+            const res = await fetch(url)
+            const json = await res.json()
+            if (!json.success || !json.data) { toast.error('No data to export'); return }
+
+            const records = Array.isArray(json.data) ? json.data : json.data.data || []
+            if (records.length === 0) { toast.error('No records found'); return }
+
+            // Generate CSV
+            const headers = Object.keys(records[0]).filter(k => typeof records[0][k] !== 'object')
+            const csvRows = [headers.join(',')]
+            for (const record of records) {
+                const row = headers.map(h => {
+                    const val = record[h]
+                    if (val === null || val === undefined) return ''
+                    return `"${String(val).replace(/"/g, '""')}"`
+                })
+                csvRows.push(row.join(','))
+            }
+
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.download = filename
+            link.click()
+            URL.revokeObjectURL(link.href)
+            toast.success(`${type} data exported!`)
+        } catch { toast.error('Export failed') }
+        finally { setExporting(null) }
+    }
 
     if (loading) return (
         <div className="space-y-6">
@@ -87,6 +136,82 @@ export default function ReportsPage() {
                 </Card>
             </div>
 
+            {/* Quick Exports */}
+            <div>
+                <h2 className="text-sm font-semibold text-black mb-3">Quick Exports</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="border-neutral-200 hover:border-neutral-400 transition-colors">
+                        <CardContent className="p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
+                                    <Users className="w-5 h-5 text-neutral-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-black">Employee Directory</p>
+                                    <p className="text-xs text-neutral-400">Full employee list</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => exportCSV('employees')}
+                                disabled={exporting === 'employees'}
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                {exporting === 'employees' ? 'Exporting...' : 'CSV'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-neutral-200 hover:border-neutral-400 transition-colors">
+                        <CardContent className="p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
+                                    <Clock className="w-5 h-5 text-neutral-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-black">Attendance Records</p>
+                                    <p className="text-xs text-neutral-400">Check-in/out logs</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => exportCSV('attendance')}
+                                disabled={exporting === 'attendance'}
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                {exporting === 'attendance' ? 'Exporting...' : 'CSV'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-neutral-200 hover:border-neutral-400 transition-colors">
+                        <CardContent className="p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
+                                    <Calendar className="w-5 h-5 text-neutral-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-black">Leave Requests</p>
+                                    <p className="text-xs text-neutral-400">All leave applications</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => exportCSV('leave')}
+                                disabled={exporting === 'leave'}
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                {exporting === 'leave' ? 'Exporting...' : 'CSV'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
             {/* Department Distribution */}
             {data?.departmentDistribution && data.departmentDistribution.length > 0 && (
                 <Card className="border-neutral-200">
@@ -114,3 +239,4 @@ export default function ReportsPage() {
         </div>
     )
 }
+

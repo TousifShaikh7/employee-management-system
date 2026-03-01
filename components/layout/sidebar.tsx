@@ -17,6 +17,8 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
+    Timer,
+    Monitor,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/lib/types/database'
@@ -39,6 +41,8 @@ const navItems: NavItem[] = [
     { label: 'Payroll', href: '/payroll', icon: DollarSign, roles: ['super_admin', 'hr_admin'] },
     { label: 'Hiring', href: '/hiring', icon: UserPlus, roles: ['super_admin', 'hr_admin', 'manager'] },
     { label: 'Announcements', href: '/announcements', icon: Megaphone, roles: ['super_admin', 'hr_admin', 'manager', 'employee'] },
+    { label: 'Shifts', href: '/shifts', icon: Timer, roles: ['super_admin', 'hr_admin', 'manager'] },
+    { label: 'Assets', href: '/assets', icon: Monitor, roles: ['super_admin', 'hr_admin'] },
     { label: 'Reports', href: '/reports', icon: BarChart3, roles: ['super_admin', 'hr_admin', 'manager'] },
     { label: 'Settings', href: '/settings', icon: Settings, roles: ['super_admin', 'hr_admin'] },
 ]
