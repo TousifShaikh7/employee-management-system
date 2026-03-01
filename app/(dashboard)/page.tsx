@@ -251,7 +251,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* Right Side Stack: Demographics / Announcements */}
-                <div className="space-y-6 flex flex-col">
+                <div className={`space-y-6 flex flex-col ${isAdmin ? '' : 'lg:col-span-3 lg:flex-row lg:space-y-0 lg:gap-6'}`}>
                     {isAdmin && (
                         <Card className="border-neutral-200 shadow-sm flex-1">
                             <CardHeader className="pb-2">
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                     )}
 
                     {!isAdmin && (
-                        <Card className="border-neutral-200 shadow-sm bg-neutral-900 text-white">
+                        <Card className="border-neutral-200 shadow-sm bg-neutral-900 text-white lg:w-1/3 flex-shrink-0">
                             <CardContent className="p-6">
                                 <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-6">Quick Actions</h3>
                                 <div className="space-y-3">
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                         </Card>
                     )}
 
-                    <Card className="border-neutral-200 shadow-sm flex-1">
+                    <Card className={`border-neutral-200 shadow-sm flex-1 ${!isAdmin ? 'lg:w-2/3' : ''}`}>
                         <CardHeader className="pb-3 border-b border-neutral-100">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-sm font-bold text-black uppercase tracking-wider">Notices</CardTitle>
