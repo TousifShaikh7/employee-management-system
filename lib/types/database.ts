@@ -7,7 +7,7 @@
 export type UserRole = 'super_admin' | 'hr_admin' | 'manager' | 'employee'
 export type EmploymentType = 'full_time' | 'part_time' | 'contractor' | 'intern'
 export type WorkLocation = 'office' | 'remote' | 'hybrid'
-export type EmployeeStatus = 'active' | 'on_leave' | 'probation' | 'suspended' | 'resigned' | 'terminated'
+export type EmployeeStatus = 'active' | 'on_leave' | 'probation' | 'suspended' | 'resigned' | 'terminated' | 'working' | 'on_break' | 'offline'
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'half_day' | 'on_leave'
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'info_requested'
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled'

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import type { Profile, Notification } from '@/lib/types/database'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
 import Link from 'next/link'
 
 interface TopBarProps {
@@ -27,7 +28,12 @@ export function TopBar({ profile, onSignOut, onOpenCommandPalette }: TopBarProps
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [currentStatus, setCurrentStatus] = useState<string>(profile?.status || 'offline')
     const supabase = createBrowserSupabaseClient()
+
+    useEffect(() => {
+        if (profile?.status) setCurrentStatus(profile.status)
+    }, [profile?.status])
 
     const fetchNotifications = useCallback(async () => {
         if (!profile) return
@@ -91,6 +97,25 @@ export function TopBar({ profile, onSignOut, onOpenCommandPalette }: TopBarProps
         setUnreadCount(0)
     }
 
+    const updateStatus = async (newStatus: string) => {
+        if (!profile) return
+        try {
+            setCurrentStatus(newStatus) // Optimistic update
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase.from('profiles') as any)
+                .update({ status: newStatus })
+                .eq('id', profile.id)
+
+            if (error) throw error
+            toast.success(`Status updated to ${newStatus.replace('_', ' ')}`)
+        } catch (err) {
+            console.error('Failed to update status:', err)
+            toast.error('Failed to update status')
+            setCurrentStatus(profile.status || 'offline') // Revert on failure
+        }
+    }
+
     const initials = profile?.full_name
         ?.split(' ')
         .map((n) => n[0])
@@ -118,7 +143,31 @@ export function TopBar({ profile, onSignOut, onOpenCommandPalette }: TopBarProps
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+                {/* Status Indicator */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2 h-8 px-3 border-neutral-200 bg-white">
+                            <div className={`w-2 h-2 rounded-full ${profile?.status === 'working' ? 'bg-green-500' : profile?.status === 'on_break' ? 'bg-yellow-500' : 'bg-neutral-300'}`} />
+                            <span className="text-xs font-medium text-neutral-600 capitalize">
+                                {profile?.status?.replace('_', ' ') || 'Offline'}
+                            </span>
+                            <ChevronDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => updateStatus('working')} className="cursor-pointer flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500" /> Working
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus('on_break')} className="cursor-pointer flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500" /> On Break
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus('offline')} className="cursor-pointer flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-neutral-300" /> Offline
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
                 {/* Notifications */}
                 <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
                     <DropdownMenuTrigger asChild>
