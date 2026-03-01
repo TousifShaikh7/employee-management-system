@@ -51,6 +51,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     const [documents, setDocuments] = useState<EmployeeDocument[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createBrowserSupabaseClient()
+    const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'manager'
 
     const fetchEmployee = useCallback(async () => {
         setLoading(true)
@@ -220,8 +221,37 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
                 <TabsContent value="documents">
                     <Card className="border-neutral-200">
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle className="text-xs font-medium uppercase tracking-wider text-neutral-400">Documents</CardTitle>
+                            {isAdmin && (
+                                <label className="cursor-pointer">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            const docType = prompt('Document type? (offer_letter, nda, id_proof, certificate, other)', 'other')
+                                            if (!docType) return
+                                            const path = `documents/${id}/${Date.now()}_${file.name}`
+                                            const { error: uploadError } = await supabase.storage.from('employee-documents').upload(path, file)
+                                            if (uploadError) { alert('Upload failed: ' + uploadError.message); return }
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            await (supabase.from('employee_documents') as any).insert({
+                                                employee_id: id,
+                                                document_type: docType,
+                                                file_name: file.name,
+                                                storage_path: path,
+                                                uploaded_by: currentUser?.id,
+                                            })
+                                            fetchDocuments()
+                                        }}
+                                    />
+                                    <Badge variant="outline" className="cursor-pointer hover:bg-neutral-100 text-xs gap-1">
+                                        <FileText className="w-3 h-3" /> Upload
+                                    </Badge>
+                                </label>
+                            )}
                         </CardHeader>
                         <CardContent>
                             {documents.length === 0 ? (
@@ -232,7 +262,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                             ) : (
                                 <div className="space-y-2">
                                     {documents.map((doc) => (
-                                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-md bg-neutral-50">
+                                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-md bg-neutral-50 hover:bg-neutral-100 transition-colors">
                                             <div className="flex items-center gap-3">
                                                 <FileText className="w-4 h-4 text-neutral-400" />
                                                 <div>
@@ -240,9 +270,22 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                                                     <p className="text-xs text-neutral-400 capitalize">{doc.document_type.replace('_', ' ')}</p>
                                                 </div>
                                             </div>
-                                            <span className="text-xs text-neutral-400">
-                                                {new Date(doc.uploaded_at).toLocaleDateString()}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-neutral-400">
+                                                    {new Date(doc.uploaded_at).toLocaleDateString()}
+                                                </span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-xs h-7"
+                                                    onClick={async () => {
+                                                        const { data } = await supabase.storage.from('employee-documents').createSignedUrl(doc.storage_path, 3600)
+                                                        if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                                                    }}
+                                                >
+                                                    Download
+                                                </Button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
